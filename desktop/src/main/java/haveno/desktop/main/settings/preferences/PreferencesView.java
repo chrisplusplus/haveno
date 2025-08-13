@@ -70,7 +70,9 @@ import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -107,16 +109,22 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
     private ComboBox<TradeCurrency> preferredTradeCurrencyComboBox;
 
     private ToggleButton showOwnOffersInOfferBook, useAnimations, useDarkMode, sortMarketCurrenciesNumerically,
-            avoidStandbyMode, useSoundForNotifications, useCustomFee, autoConfirmXmrToggle, hideNonAccountPaymentMethodsToggle, denyApiTakerToggle,
+            avoidStandbyMode, useSoundForNotifications, useCustomFee, hideNonAccountPaymentMethodsToggle, denyApiTakerToggle,
             notifyOnPreReleaseToggle;
     private int gridRow = 0;
     private int displayCurrenciesGridRowIndex = 0;
-    private InputTextField ignoreTradersListInputTextField,
-            autoConfRequiredConfirmationsTf, autoConfServiceAddressTf, autoConfTradeLimitTf, clearDataAfterDaysInputTextField,
+    private InputTextField ignoreTradersListInputTextField, clearDataAfterDaysInputTextField,
             rpcUserTextField, blockNotifyPortTextField;
     private PasswordTextField rpcPwTextField;
 
-    private ChangeListener<Boolean> autoConfServiceAddressFocusOutListener, autoConfRequiredConfirmationsFocusOutListener;
+    private final Map<String, ToggleButton> autoConfirmToggles = new HashMap<>();
+    private final Map<String, InputTextField> autoConfRequiredConfirmationsTfs = new HashMap<>();
+    private final Map<String, InputTextField> autoConfServiceAddressTfs = new HashMap<>();
+    private final Map<String, InputTextField> autoConfTradeLimitTfs = new HashMap<>();
+    private final Map<String, ChangeListener<Boolean>> autoConfServiceAddressFocusOutListeners = new HashMap<>();
+    private final Map<String, ChangeListener<Boolean>> autoConfRequiredConfirmationsFocusOutListeners = new HashMap<>();
+    private final Map<String, ChangeListener<String>> autoConfTradeLimitListeners = new HashMap<>();
+    private final Map<String, ChangeListener<String>> autoConfServiceAddressListeners = new HashMap<>();
     private final Preferences preferences;
     //private final ReferralIdService referralIdService;
     private final FilterManager filterManager;
@@ -136,8 +144,7 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
     private ObservableList<TradeCurrency> tradeCurrencies;
     private InputTextField deviationInputTextField;
     private ChangeListener<String> deviationListener, ignoreTradersListListener,
-            rpcUserListener, rpcPwListener, blockNotifyPortListener, clearDataAfterDaysListener,
-            autoConfTradeLimitListener, autoConfServiceAddressListener;
+            rpcUserListener, rpcPwListener, blockNotifyPortListener, clearDataAfterDaysListener;
     private ChangeListener<Boolean> deviationFocusedListener;
     private final boolean displayStandbyModeFeature;
     private ChangeListener<Filter> filterChangeListener;
@@ -535,108 +542,128 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
     }
 
     private void initializeAutoConfirmOptions() {
-        GridPane autoConfirmGridPane = new GridPane();
-        GridPane.setHgrow(autoConfirmGridPane, Priority.ALWAYS);
-        if (!hideXmrAutoConf) root.add(autoConfirmGridPane, 2, displayCurrenciesGridRowIndex, 2, 10);
-        addTitledGroupBg(autoConfirmGridPane, 0, 4, Res.get("setting.preferences.autoConfirmXMR"), 0);
-        int localRowIndex = 0;
-        autoConfirmXmrToggle = addSlideToggleButton(autoConfirmGridPane, localRowIndex, Res.get("setting.preferences.autoConfirmEnabled"), Layout.FIRST_ROW_DISTANCE);
+        VBox autoConfirmBox = new VBox();
+        GridPane.setHgrow(autoConfirmBox, Priority.ALWAYS);
+        root.add(autoConfirmBox, 2, displayCurrenciesGridRowIndex, 2, 10);
 
-        autoConfRequiredConfirmationsTf = addInputTextField(autoConfirmGridPane, ++localRowIndex, Res.get("setting.preferences.autoConfirmRequiredConfirmations"));
-        autoConfRequiredConfirmationsTf.setValidator(new IntegerValidator(1, DevEnv.isDevMode() ? 100000000 : 1000));
+        preferences.getAutoConfirmSettingsList().forEach(settings -> {
+            String code = settings.getCurrencyCode();
+            GridPane pane = new GridPane();
+            autoConfirmBox.getChildren().add(pane);
+            addTitledGroupBg(pane, 0, 4, Res.get("setting.preferences.autoConfirmCurrency", code), 0);
+            int localRowIndex = 0;
+            ToggleButton toggle = addSlideToggleButton(pane, localRowIndex, Res.get("setting.preferences.autoConfirmEnabled"), Layout.FIRST_ROW_DISTANCE);
 
-        autoConfTradeLimitTf = addInputTextField(autoConfirmGridPane, ++localRowIndex, Res.get("setting.preferences.autoConfirmMaxTradeSize"));
-        autoConfTradeLimitTf.setValidator(new XmrValidator());
+            InputTextField confirmationsTf = addInputTextField(pane, ++localRowIndex, Res.get("setting.preferences.autoConfirmRequiredConfirmations"));
+            confirmationsTf.setValidator(new IntegerValidator(1, DevEnv.isDevMode() ? 100000000 : 1000));
 
-        autoConfServiceAddressTf = addInputTextField(autoConfirmGridPane, ++localRowIndex, Res.get("setting.preferences.autoConfirmServiceAddresses"));
-        GridPane.setHgrow(autoConfServiceAddressTf, Priority.ALWAYS);
-        if (!hideXmrAutoConf) displayCurrenciesGridRowIndex += 4;
+            InputTextField tradeLimitTf = addInputTextField(pane, ++localRowIndex, Res.get("setting.preferences.autoConfirmMaxTradeSize", code));
+            tradeLimitTf.setValidator(new XmrValidator());
 
-        autoConfServiceAddressListener = (observable, oldValue, newValue) -> {
-            if (!newValue.equals(oldValue)) {
+            InputTextField serviceTf = addInputTextField(pane, ++localRowIndex, Res.get("setting.preferences.autoConfirmServiceAddresses"));
+            GridPane.setHgrow(serviceTf, Priority.ALWAYS);
 
-                RegexValidator onionRegex = RegexValidatorFactory.onionAddressRegexValidator();
-                RegexValidator localhostRegex = RegexValidatorFactory.localhostAddressRegexValidator();
-                RegexValidator localnetRegex = RegexValidatorFactory.localnetAddressRegexValidator();
+            autoConfirmToggles.put(code, toggle);
+            autoConfRequiredConfirmationsTfs.put(code, confirmationsTf);
+            autoConfTradeLimitTfs.put(code, tradeLimitTf);
+            autoConfServiceAddressTfs.put(code, serviceTf);
 
-                List<String> serviceAddressesRaw = Arrays.asList(StringUtils.deleteWhitespace(newValue).split(","));
+            ChangeListener<String> serviceListener = (observable, oldValue, newValue) -> {
+                if (!newValue.equals(oldValue)) {
+                    RegexValidator onionRegex = RegexValidatorFactory.onionAddressRegexValidator();
+                    RegexValidator localhostRegex = RegexValidatorFactory.localhostAddressRegexValidator();
+                    RegexValidator localnetRegex = RegexValidatorFactory.localnetAddressRegexValidator();
 
-                // revert to default service providers when user empties the list
-                if (serviceAddressesRaw.size() == 1 && serviceAddressesRaw.get(0).isEmpty()) {
-                    serviceAddressesRaw = preferences.getDefaultXmrTxProofServices();
-                }
-
-                // we must always communicate with XMR explorer API securely
-                // if *.onion hostname, we use Tor normally
-                // if localhost, LAN address, or *.local FQDN we use HTTP without Tor
-                // otherwise we enforce https:// for any clearnet FQDN hostname
-                List<String> serviceAddressesParsed = new ArrayList<String>();
-                serviceAddressesRaw.forEach((addr) -> {
-                    addr = addr.replaceAll("http://", "").replaceAll("https://", "");
-                    if (onionRegex.validate(addr).isValid) {
-                        log.info("Using Tor for onion hostname: {}", addr);
-                        serviceAddressesParsed.add(addr);
-                    } else if (localhostRegex.validate(addr).isValid) {
-                        log.info("Using HTTP without Tor for Loopback address: {}", addr);
-                        serviceAddressesParsed.add("http://" + addr);
-                    } else if (localnetRegex.validate(addr).isValid) {
-                        log.info("Using HTTP without Tor for LAN address: {}", addr);
-                        serviceAddressesParsed.add("http://" + addr);
-                    } else {
-                        log.info("Using HTTPS with Tor for Clearnet address: {}", addr);
-                        serviceAddressesParsed.add("https://" + addr);
+                    List<String> serviceAddressesRaw = Arrays.asList(StringUtils.deleteWhitespace(newValue).split(","));
+                    if (serviceAddressesRaw.size() == 1 && serviceAddressesRaw.get(0).isEmpty()) {
+                        serviceAddressesRaw = preferences.getDefaultXmrTxProofServices();
                     }
-                });
 
-                preferences.setAutoConfServiceAddresses("XMR", serviceAddressesParsed);
-            }
-        };
+                    List<String> serviceAddressesParsed = new ArrayList<>();
+                    boolean warned = false;
+                    for (String addr : serviceAddressesRaw) {
+                        addr = addr.replaceAll("http://", "").replaceAll("https://", "");
+                        if (onionRegex.validate(addr).isValid) {
+                            serviceAddressesParsed.add(addr);
+                        } else if (localhostRegex.validate(addr).isValid) {
+                            serviceAddressesParsed.add("http://" + addr);
+                        } else if (localnetRegex.validate(addr).isValid) {
+                            serviceAddressesParsed.add("http://" + addr);
+                        } else {
+                            serviceAddressesParsed.add("https://" + addr);
+                            if (!warned) {
+                                new Popup().warning(Res.get("setting.preferences.nonLocalRpcWarning")).show();
+                                warned = true;
+                            }
+                        }
+                    }
 
-        autoConfTradeLimitListener = (observable, oldValue, newValue) -> {
-            if (!newValue.equals(oldValue) && autoConfTradeLimitTf.getValidator().validate(newValue).isValid) {
-                BigInteger amount = HavenoUtils.parseXmr(newValue);
-                preferences.setAutoConfTradeLimit("XMR", amount.longValueExact());
-            }
-        };
+                    preferences.setAutoConfServiceAddresses(code, serviceAddressesParsed);
 
-        autoConfServiceAddressFocusOutListener = (observable, oldValue, newValue) -> {
-            if (oldValue && !newValue) {
-                log.info("Service address focus out, check and re-display default option");
-                if (autoConfServiceAddressTf.getText().isEmpty()) {
-                    preferences.findAutoConfirmSettings("XMR").ifPresent(autoConfirmSettings -> {
-                        List<String> serviceAddresses = autoConfirmSettings.getServiceAddresses();
-                        autoConfServiceAddressTf.setText(String.join(", ", serviceAddresses));
-                    });
+                    List<String> all = autoConfServiceAddressTfs.values().stream()
+                            .flatMap(tf -> Arrays.asList(StringUtils.deleteWhitespace(tf.getText()).split(",")).stream())
+                            .filter(s -> !s.isEmpty())
+                            .collect(Collectors.toList());
+                    Set<String> duplicates = all.stream()
+                            .collect(Collectors.groupingBy(s -> s, Collectors.counting()))
+                            .entrySet().stream()
+                            .filter(e -> e.getValue() > 1)
+                            .map(Map.Entry::getKey)
+                            .collect(Collectors.toSet());
+                    if (!duplicates.isEmpty()) {
+                        new Popup().warning(Res.get("setting.preferences.addressReuseWarning")).show();
+                    }
                 }
-            }
-        };
+            };
+            autoConfServiceAddressListeners.put(code, serviceListener);
+            serviceTf.textProperty().addListener(serviceListener);
 
-        // We use a focus out handler to not update the data during entering text as that might lead to lower than
-        // intended numbers which could be lead in the worst case to auto completion as number of confirmations is
-        // reached. E.g. user had value 10 and wants to change it to 15 and deletes the 0, so current value would be 1.
-        // If the service result just comes in at that moment the service might be considered complete as 1 is at that
-        // moment used. We read the data just in time to make changes more flexible, otherwise user would need to
-        // restart to apply changes from the number of confirmations settings.
-        // Other fields like service addresses and limits are not affected and are taken at service start and cannot be
-        // changed for already started services.
-        autoConfRequiredConfirmationsFocusOutListener = (observable, oldValue, newValue) -> {
-            if (oldValue && !newValue) {
-                String txt = autoConfRequiredConfirmationsTf.getText();
-                if (autoConfRequiredConfirmationsTf.getValidator().validate(txt).isValid) {
-                    int requiredConfirmations = Integer.parseInt(txt);
-                    preferences.setAutoConfRequiredConfirmations("XMR", requiredConfirmations);
-                } else {
-                    preferences.findAutoConfirmSettings("XMR")
-                            .ifPresent(e -> autoConfRequiredConfirmationsTf
-                                    .setText(String.valueOf(e.getRequiredConfirmations())));
+            ChangeListener<String> tradeListener = (observable, oldValue, newValue) -> {
+                if (!newValue.equals(oldValue) && tradeLimitTf.getValidator().validate(newValue).isValid) {
+                    BigInteger amount = HavenoUtils.parseXmr(newValue);
+                    preferences.setAutoConfTradeLimit(code, amount.longValueExact());
                 }
-            }
-        };
+            };
+            autoConfTradeLimitListeners.put(code, tradeListener);
+            tradeLimitTf.textProperty().addListener(tradeListener);
+
+            ChangeListener<Boolean> serviceFocusListener = (observable, oldValue, newValue) -> {
+                if (oldValue && !newValue) {
+                    if (serviceTf.getText().isEmpty()) {
+                        preferences.findAutoConfirmSettings(code).ifPresent(s -> {
+                            List<String> serviceAddresses = s.getServiceAddresses();
+                            serviceTf.setText(String.join(", ", serviceAddresses));
+                        });
+                    }
+                }
+            };
+            autoConfServiceAddressFocusOutListeners.put(code, serviceFocusListener);
+            serviceTf.focusedProperty().addListener(serviceFocusListener);
+
+            ChangeListener<Boolean> confirmFocusListener = (observable, oldValue, newValue) -> {
+                if (oldValue && !newValue) {
+                    String txt = confirmationsTf.getText();
+                    if (confirmationsTf.getValidator().validate(txt).isValid) {
+                        int requiredConfirmations = Integer.parseInt(txt);
+                        preferences.setAutoConfRequiredConfirmations(code, requiredConfirmations);
+                    } else {
+                        preferences.findAutoConfirmSettings(code)
+                                .ifPresent(e -> confirmationsTf.setText(String.valueOf(e.getRequiredConfirmations())));
+                    }
+                }
+            };
+            autoConfRequiredConfirmationsFocusOutListeners.put(code, confirmFocusListener);
+            confirmationsTf.focusedProperty().addListener(confirmFocusListener);
+
+            toggle.setOnAction(e -> preferences.setAutoConfEnabled(code, toggle.isSelected()));
+        });
+
+        displayCurrenciesGridRowIndex += preferences.getAutoConfirmSettingsList().size() * 4;
 
         filterChangeListener = (observable, oldValue, newValue) -> {
-            autoConfirmGridPane.setDisable(newValue != null && newValue.isDisableAutoConf());
+            autoConfirmBox.setDisable(newValue != null && newValue.isDisableAutoConf());
         };
-        autoConfirmGridPane.setDisable(filterManager.getFilter() != null && filterManager.getFilter().isDisableAutoConf());
+        autoConfirmBox.setDisable(filterManager.getFilter() != null && filterManager.getFilter().isDisableAutoConf());
     }
 
 
@@ -812,20 +839,24 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
     }
 
     private void activateAutoConfirmPreferences() {
-        preferences.findAutoConfirmSettings("XMR").ifPresent(autoConfirmSettings -> {
-            autoConfirmXmrToggle.setSelected(autoConfirmSettings.isEnabled());
-            autoConfRequiredConfirmationsTf.setText(String.valueOf(autoConfirmSettings.getRequiredConfirmations()));
-            autoConfTradeLimitTf.setText(HavenoUtils.formatXmr(autoConfirmSettings.getTradeLimit()));
-            autoConfServiceAddressTf.setText(String.join(", ", autoConfirmSettings.getServiceAddresses()));
-            autoConfRequiredConfirmationsTf.focusedProperty().addListener(autoConfRequiredConfirmationsFocusOutListener);
-            autoConfTradeLimitTf.textProperty().addListener(autoConfTradeLimitListener);
-            autoConfServiceAddressTf.textProperty().addListener(autoConfServiceAddressListener);
-            autoConfServiceAddressTf.focusedProperty().addListener(autoConfServiceAddressFocusOutListener);
-            autoConfirmXmrToggle.setOnAction(e -> {
-                preferences.setAutoConfEnabled(autoConfirmSettings.getCurrencyCode(), autoConfirmXmrToggle.isSelected());
-            });
-            filterManager.filterProperty().addListener(filterChangeListener);
+        preferences.getAutoConfirmSettingsList().forEach(autoConfirmSettings -> {
+            String code = autoConfirmSettings.getCurrencyCode();
+            ToggleButton toggle = autoConfirmToggles.get(code);
+            InputTextField confTf = autoConfRequiredConfirmationsTfs.get(code);
+            InputTextField limitTf = autoConfTradeLimitTfs.get(code);
+            InputTextField serviceTf = autoConfServiceAddressTfs.get(code);
+            if (toggle == null || confTf == null || limitTf == null || serviceTf == null) return;
+            toggle.setSelected(autoConfirmSettings.isEnabled());
+            confTf.setText(String.valueOf(autoConfirmSettings.getRequiredConfirmations()));
+            limitTf.setText(HavenoUtils.formatXmr(autoConfirmSettings.getTradeLimit()));
+            serviceTf.setText(String.join(", ", autoConfirmSettings.getServiceAddresses()));
+            confTf.focusedProperty().addListener(autoConfRequiredConfirmationsFocusOutListeners.get(code));
+            limitTf.textProperty().addListener(autoConfTradeLimitListeners.get(code));
+            serviceTf.textProperty().addListener(autoConfServiceAddressListeners.get(code));
+            serviceTf.focusedProperty().addListener(autoConfServiceAddressFocusOutListeners.get(code));
+            toggle.setOnAction(e -> preferences.setAutoConfEnabled(code, toggle.isSelected()));
         });
+        filterManager.filterProperty().addListener(filterChangeListener);
     }
 
 
@@ -864,13 +895,19 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
     }
 
     private void deactivateAutoConfirmPreferences() {
-        preferences.findAutoConfirmSettings("XMR").ifPresent(autoConfirmSettings -> {
-            autoConfirmXmrToggle.setOnAction(null);
-            autoConfTradeLimitTf.textProperty().removeListener(autoConfTradeLimitListener);
-            autoConfServiceAddressTf.textProperty().removeListener(autoConfServiceAddressListener);
-            autoConfServiceAddressTf.focusedProperty().removeListener(autoConfServiceAddressFocusOutListener);
-            autoConfRequiredConfirmationsTf.focusedProperty().removeListener(autoConfRequiredConfirmationsFocusOutListener);
-            filterManager.filterProperty().removeListener(filterChangeListener);
+        preferences.getAutoConfirmSettingsList().forEach(autoConfirmSettings -> {
+            String code = autoConfirmSettings.getCurrencyCode();
+            ToggleButton toggle = autoConfirmToggles.get(code);
+            InputTextField confTf = autoConfRequiredConfirmationsTfs.get(code);
+            InputTextField limitTf = autoConfTradeLimitTfs.get(code);
+            InputTextField serviceTf = autoConfServiceAddressTfs.get(code);
+            if (toggle == null || confTf == null || limitTf == null || serviceTf == null) return;
+            toggle.setOnAction(null);
+            limitTf.textProperty().removeListener(autoConfTradeLimitListeners.get(code));
+            serviceTf.textProperty().removeListener(autoConfServiceAddressListeners.get(code));
+            serviceTf.focusedProperty().removeListener(autoConfServiceAddressFocusOutListeners.get(code));
+            confTf.focusedProperty().removeListener(autoConfRequiredConfirmationsFocusOutListeners.get(code));
         });
+        filterManager.filterProperty().removeListener(filterChangeListener);
     }
 }
