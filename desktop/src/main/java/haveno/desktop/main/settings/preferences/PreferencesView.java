@@ -187,6 +187,12 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
         initializeSeparator();
         initializeAutoConfirmOptions();
         initializeDisplayCurrencies();
+
+        preferences.getAddressReuseDetectedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                showAddressReusePopup();
+            }
+        });
     }
 
 
@@ -521,6 +527,15 @@ public class PreferencesView extends ActivatableViewAndModel<GridPane, Preferenc
         });
 
         displayCurrenciesGridRowIndex += listRowSpan;
+    }
+
+    private void showAddressReusePopup() {
+        new Popup()
+                .headLine(Res.get("setting.addressReuse.headline"))
+                .backgroundInfo(Res.get("setting.addressReuse.msg"))
+                .actionButtonText(Res.get("shared.ok"))
+                .onAction(() -> preferences.setAddressReuseDetected(false))
+                .show();
     }
 
     private void initializeDisplayOptions() {
