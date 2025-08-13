@@ -697,7 +697,8 @@ abstract class OfferBookViewModel extends ActivatableViewModel {
     }
 
     public boolean isInstantPaymentMethod(Offer offer) {
-        return offer.getPaymentMethod().equals(PaymentMethod.BLOCK_CHAINS_INSTANT);
+        return offer.getPaymentMethod().equals(PaymentMethod.BLOCK_CHAINS_INSTANT) ||
+               offer.getPaymentMethod().equals(PaymentMethod.BLOCK_CHAINS_AUTOCONFIRM);
     }
 
     public void setOfferActionHandler(OfferView.OfferActionHandler offerActionHandler) {

@@ -45,6 +45,7 @@ import static haveno.core.payment.payload.PaymentMethod.AUSTRALIA_PAYID_ID;
 import static haveno.core.payment.payload.PaymentMethod.BIZUM_ID;
 import static haveno.core.payment.payload.PaymentMethod.BLOCK_CHAINS;
 import static haveno.core.payment.payload.PaymentMethod.BLOCK_CHAINS_INSTANT;
+import static haveno.core.payment.payload.PaymentMethod.BLOCK_CHAINS_AUTOCONFIRM;
 import static haveno.core.payment.payload.PaymentMethod.CAPITUAL_ID;
 import static haveno.core.payment.payload.PaymentMethod.CASH_APP_ID;
 import static haveno.core.payment.payload.PaymentMethod.PAY_BY_MAIL_ID;
@@ -308,7 +309,8 @@ public class PaymentAccountUtil {
 
     public static boolean isCryptoCurrencyAccount(PaymentAccount paymentAccount) {
         return (paymentAccount != null && paymentAccount.getPaymentMethod().equals(BLOCK_CHAINS) ||
-                paymentAccount != null && paymentAccount.getPaymentMethod().equals(BLOCK_CHAINS_INSTANT));
+                paymentAccount != null && paymentAccount.getPaymentMethod().equals(BLOCK_CHAINS_INSTANT) ||
+                paymentAccount != null && paymentAccount.getPaymentMethod().equals(BLOCK_CHAINS_AUTOCONFIRM));
     }
 
     public static Optional<PaymentAccount> findPaymentAccount(PaymentAccountPayload paymentAccountPayload,

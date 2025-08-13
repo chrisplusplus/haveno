@@ -177,6 +177,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public static final String PIX_ID = "PIX";
     public static final String AMAZON_GIFT_CARD_ID = "AMAZON_GIFT_CARD";
     public static final String BLOCK_CHAINS_INSTANT_ID = "BLOCK_CHAINS_INSTANT";
+    public static final String BLOCK_CHAINS_AUTOCONFIRM_ID = "BLOCK_CHAINS_AUTOCONFIRM";
     public static final String PAY_BY_MAIL_ID = "PAY_BY_MAIL";
     public static final String CASH_AT_ATM_ID = "CASH_AT_ATM";
     public static final String CAPITUAL_ID = "CAPITUAL";
@@ -238,6 +239,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     public static PaymentMethod PIX;
     public static PaymentMethod AMAZON_GIFT_CARD;
     public static PaymentMethod BLOCK_CHAINS_INSTANT;
+    public static PaymentMethod BLOCK_CHAINS_AUTOCONFIRM;
     public static PaymentMethod PAY_BY_MAIL;
     public static PaymentMethod CASH_AT_ATM;
     public static PaymentMethod CAPITUAL;
@@ -342,9 +344,10 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
 
             // Cryptos
             BLOCK_CHAINS = new PaymentMethod(BLOCK_CHAINS_ID, DAY, DEFAULT_TRADE_LIMIT_CRYPTO, Arrays.asList()),
-            
+
             // Cryptos with 1 hour trade period
-            BLOCK_CHAINS_INSTANT = new PaymentMethod(BLOCK_CHAINS_INSTANT_ID, TimeUnit.HOURS.toMillis(1), DEFAULT_TRADE_LIMIT_CRYPTO, Arrays.asList())
+            BLOCK_CHAINS_INSTANT = new PaymentMethod(BLOCK_CHAINS_INSTANT_ID, TimeUnit.HOURS.toMillis(1), DEFAULT_TRADE_LIMIT_CRYPTO, Arrays.asList()),
+            BLOCK_CHAINS_AUTOCONFIRM = new PaymentMethod(BLOCK_CHAINS_AUTOCONFIRM_ID, TimeUnit.HOURS.toMillis(1), DEFAULT_TRADE_LIMIT_CRYPTO, Arrays.asList())
     );
 
     // TODO: delete this override method, which overrides the paymentMethods variable, when all payment methods supported using structured form api, and make paymentMethods private
@@ -551,7 +554,7 @@ public final class PaymentMethod implements PersistablePayload, Comparable<Payme
     }
 
     public boolean isBlockchain() {
-        return this.equals(BLOCK_CHAINS_INSTANT) || this.equals(BLOCK_CHAINS);
+        return this.equals(BLOCK_CHAINS_INSTANT) || this.equals(BLOCK_CHAINS_AUTOCONFIRM) || this.equals(BLOCK_CHAINS);
     }
 
     // Includes any non btc asset, not limited to blockchain payment methods

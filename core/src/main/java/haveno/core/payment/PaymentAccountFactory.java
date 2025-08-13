@@ -112,6 +112,8 @@ public class PaymentAccountFactory {
                 return new AmazonGiftCardAccount();
             case PaymentMethod.BLOCK_CHAINS_INSTANT_ID:
                 return new InstantCryptoCurrencyAccount();
+            case PaymentMethod.BLOCK_CHAINS_AUTOCONFIRM_ID:
+                return new AutoConfirmCryptoAccount();
             case PaymentMethod.CAPITUAL_ID:
                 return new CapitualAccount();
             case PaymentMethod.CELPAY_ID:
