@@ -44,7 +44,6 @@ public final class AutoConfirmSettings implements PersistablePayload {
 
     @SuppressWarnings("SameParameterValue")
     static Optional<AutoConfirmSettings> getDefault(List<String> serviceAddresses, String currencyCode) {
-        //noinspection SwitchStatementWithTooFewBranches
         switch (currencyCode) {
             case "XMR":
                 return Optional.of(new AutoConfirmSettings(
@@ -53,7 +52,31 @@ public final class AutoConfirmSettings implements PersistablePayload {
                         Coin.COIN.value,
                         serviceAddresses,
                         "XMR"));
+            case "BTC":
+            case "BCH":
+            case "LTC":
+                return Optional.of(new AutoConfirmSettings(
+                        false,
+                        1,
+                        Coin.COIN.value,
+                        serviceAddresses,
+                        currencyCode));
+            case "ETH":
+                return Optional.of(new AutoConfirmSettings(
+                        false,
+                        12,
+                        1_000_000_000_000_000_000L,
+                        serviceAddresses,
+                        "ETH"));
             default:
+                if (currencyCode.endsWith("-ERC20")) {
+                    return Optional.of(new AutoConfirmSettings(
+                            false,
+                            12,
+                            1_000_000_000_000_000_000L,
+                            serviceAddresses,
+                            currencyCode));
+                }
                 log.error("No AutoConfirmSettings supported yet for currency {}", currencyCode);
                 return Optional.empty();
         }
