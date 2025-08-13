@@ -108,9 +108,14 @@ public final class OfferPayload implements ProtectedStoragePayload, ExpirablePay
     // Capability.SIGNED_ACCOUNT_AGE_WITNESS is 11 and Capability.MEDIATION is 12 so if we want to signal that maker
     // of the offer supports both capabilities we add "11, 12" to capabilities.
     public static final String CAPABILITIES = "capabilities";
-    // If maker is seller and has xmrAutoConf enabled it is set to "1" otherwise it is not set
-    public static final String XMR_AUTO_CONF = "xmrAutoConf";
-    public static final String XMR_AUTO_CONF_ENABLED_VALUE = "1";
+    // If maker is seller and has auto-confirm enabled we add an entry
+    // with key "autoConf_<CURRENCY>" and value "1" (AUTO_CONF_ENABLED_VALUE)
+    public static final String AUTO_CONF_PREFIX = "autoConf_";
+    public static final String AUTO_CONF_ENABLED_VALUE = "1";
+
+    public static String getAutoConfKey(String currencyCode) {
+        return AUTO_CONF_PREFIX + currencyCode;
+    }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
