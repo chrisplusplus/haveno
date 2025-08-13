@@ -137,6 +137,8 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
     private final BooleanProperty useStandbyModeProperty = new SimpleBooleanProperty(prefPayload.isUseStandbyMode());
     @Getter
     private final BooleanProperty useSoundForNotificationsProperty = new SimpleBooleanProperty(prefPayload.isUseSoundForNotifications());
+    @Getter
+    private final BooleanProperty addressReuseDetectedProperty = new SimpleBooleanProperty(false);
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -739,6 +741,10 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
 
     public void setUseSoundForNotifications(boolean useSoundForNotifications) {
         this.useSoundForNotificationsProperty.set(useSoundForNotifications);
+    }
+
+    public void setAddressReuseDetected(boolean detected) {
+        this.addressReuseDetectedProperty.set(detected);
     }
 
     public void setTakeOfferSelectedPaymentAccountId(String value) {
