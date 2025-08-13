@@ -200,11 +200,15 @@ public final class PreferencesPayload implements PersistableEnvelope {
                 .setSecurityDepositAsPercentForCrypto(securityDepositAsPercentForCrypto)
                 .setBlockNotifyPort(blockNotifyPort)
                 .setTacAcceptedV120(tacAcceptedV120)
-                .setBsqAverageTrimThreshold(bsqAverageTrimThreshold)
-                .addAllAutoConfirmSettings(autoConfirmSettingsList.stream()
-                        .map(autoConfirmSettings -> ((protobuf.AutoConfirmSettings) autoConfirmSettings.toProtoMessage()))
-                        .collect(Collectors.toList()))
-                .setHideNonAccountPaymentMethods(hideNonAccountPaymentMethods)
+                .setBsqAverageTrimThreshold(bsqAverageTrimThreshold);
+
+        if (!autoConfirmSettingsList.isEmpty()) {
+            builder.addAllAutoConfirmSettings(autoConfirmSettingsList.stream()
+                    .map(autoConfirmSettings -> ((protobuf.AutoConfirmSettings) autoConfirmSettings.toProtoMessage()))
+                    .collect(Collectors.toList()));
+        }
+
+        builder.setHideNonAccountPaymentMethods(hideNonAccountPaymentMethods)
                 .setShowOffersMatchingMyAccounts(showOffersMatchingMyAccounts)
                 .setShowPrivateOffers(showPrivateOffers)
                 .setDenyApiTaker(denyApiTaker)

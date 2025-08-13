@@ -323,11 +323,18 @@ public final class Preferences implements PersistedDataHost, BridgeAddressProvid
         }
 
         if (prefPayload.getAutoConfirmSettingsList().isEmpty()) {
+            List<AutoConfirmSettings> list = getAutoConfirmSettingsList();
             List<String> defaultXmrTxProofServices = getDefaultXmrTxProofServices();
-            AutoConfirmSettings.getDefault(defaultXmrTxProofServices, "XMR")
-                    .ifPresent(xmrAutoConfirmSettings -> {
-                        getAutoConfirmSettingsList().add(xmrAutoConfirmSettings);
-                    });
+            AutoConfirmSettings.getDefault(defaultXmrTxProofServices, "XMR").ifPresent(list::add);
+            AutoConfirmSettings.getDefault(new ArrayList<>(), "BTC").ifPresent(list::add);
+            AutoConfirmSettings.getDefault(new ArrayList<>(), "BCH").ifPresent(list::add);
+            AutoConfirmSettings.getDefault(new ArrayList<>(), "LTC").ifPresent(list::add);
+            AutoConfirmSettings.getDefault(new ArrayList<>(), "ETH").ifPresent(list::add);
+            CurrencyUtil.getAllSortedCryptoCurrencies().stream()
+                    .map(CryptoCurrency::getCode)
+                    .filter(code -> code.endsWith("-ERC20"))
+                    .forEach(code ->
+                            AutoConfirmSettings.getDefault(new ArrayList<>(), code).ifPresent(list::add));
         }
 
         // enable sounds by default for existing clients (protobuf does not express that new field is unset)
