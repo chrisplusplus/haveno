@@ -44,8 +44,6 @@ import static haveno.core.offer.OfferPayload.F2F_EXTRA_INFO;
 import static haveno.core.offer.OfferPayload.PAY_BY_MAIL_EXTRA_INFO;
 import static haveno.core.offer.OfferPayload.PAYPAL_EXTRA_INFO;
 import static haveno.core.offer.OfferPayload.REFERRAL_ID;
-import static haveno.core.offer.OfferPayload.XMR_AUTO_CONF;
-import static haveno.core.offer.OfferPayload.XMR_AUTO_CONF_ENABLED_VALUE;
 
 import haveno.core.payment.AustraliaPayidAccount;
 import haveno.core.payment.CashAppAccount;
@@ -226,11 +224,12 @@ public class OfferUtil {
 
         extraDataMap.put(CAPABILITIES, Capabilities.app.toStringList());
 
-        if (currencyCode.equals("XMR") && direction == OfferDirection.SELL) {
+        if (direction == OfferDirection.SELL) {
             preferences.getAutoConfirmSettingsList().stream()
-                    .filter(e -> e.getCurrencyCode().equals("XMR"))
+                    .filter(e -> e.getCurrencyCode().equals(currencyCode))
                     .filter(AutoConfirmSettings::isEnabled)
-                    .forEach(e -> extraDataMap.put(XMR_AUTO_CONF, XMR_AUTO_CONF_ENABLED_VALUE));
+                    .forEach(e -> extraDataMap.put(OfferPayload.getAutoConfKey(currencyCode),
+                            OfferPayload.AUTO_CONF_ENABLED_VALUE));
         }
 
         return extraDataMap.isEmpty() ? null : extraDataMap;
